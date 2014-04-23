@@ -1,0 +1,24 @@
+{
+  "name": "WebALServer",
+  "email": "luis.zaman@gmail.com",
+  "version": "0.0.1",
+  "description": "Server for websocket based organism migration between client populations",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zamanlh/WebAL14.git"
+  },
+  "author": "Luis Zaman",
+  "license": "BSD-2-Clause",
+  "bugs": {
+    "url": "https://github.com/zamanlh/WebAL14/issues"
+  },
+  "dependencies": {
+    "express": "*",
+    "socket.io": "*"
+  }
+}
