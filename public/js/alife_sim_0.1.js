@@ -10,9 +10,72 @@ var create_world = function(view_el, res_data, org_data) {
 	var color_scheme_idx = Object.keys(color_scheme).length;
 	color_scheme = color_scheme[color_scheme_idx.toString()];
 
+	// First, checks if it isn't implemented yet.
+	if (!String.prototype.format) {
+		String.prototype.format = function() {
+			var args = arguments;
+			return this.replace(/{(\d+)}/g, function(match, number) { 
+			return typeof args[number] != 'undefined'
+				? args[number]
+				: match
+		  	;
+			});
+		};
+	};
+
+	function normRand() {
+		var x1, x2, rad;
+	 
+		do {
+			x1 = 2 * Math.random() - 1;
+			x2 = 2 * Math.random() - 1;
+			rad = x1 * x1 + x2 * x2;
+		} while(rad >= 1 || rad == 0);
+	 
+		var c = Math.sqrt(-2 * Math.log(rad) / rad);
+	 
+		return x1 * c;
+	};
+
+
+	function hex_to_rgb(hex) {
+		var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+		return result ? {
+			r: parseInt(result[1], 16),
+			g: parseInt(result[2], 16),
+			b: parseInt(result[3], 16)
+		} : null;
+	};
+
+	function rbg_to_hex(r, g, b) {
+		return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+	};
+
 	var get_random_color = function() {
 		var col = _.sample(color_scheme);
 		return(col);
+	};
+
+
+	var min_max = function(val) {
+		return( Math.max(Math.min(val, 255), 0) ); 
+	};
+
+	var mutate_color = function(hex_color) {
+		rgb_obj = hex_to_rgb(hex_color);
+		var rnd = Math.random();
+		console.log(Math.round(normRand()*10));
+		if (rnd < 1/3.0){
+			//mutate r
+			rgb_obj.r += Math.round(normRand()*10);
+		} else if (rnd < 2/3) {
+			//mutate g
+			rgb_obj.g += Math.round(normRand()*10);
+		} else {
+			//mutate b
+			rgb_obj.b += Math.round(normRand()*10);
+		};
+		return(rbg_to_hex(min_max(rgb_obj.r), min_max(rgb_obj.g), min_max(rgb_obj.b)));
 	};
 
 	socket.on('num_connected_response', function(data) {
@@ -20,22 +83,8 @@ var create_world = function(view_el, res_data, org_data) {
 		console.log(num_connected);
 	});
 
+
 	return function() { 
-		function normRand() {
-			var x1, x2, rad;
-		 
-			do {
-				x1 = 2 * Math.random() - 1;
-				x2 = 2 * Math.random() - 1;
-				rad = x1 * x1 + x2 * x2;
-			} while(rad >= 1 || rad == 0);
-		 
-			var c = Math.sqrt(-2 * Math.log(rad) / rad);
-		 
-			return x1 * c;
-		};
-
-
 		var circ;
 		var orgs = {};
 		var g_world;
@@ -98,7 +147,7 @@ var create_world = function(view_el, res_data, org_data) {
 
 				circ.color = random_color;
 				circ.sim_type = "org";
-				
+				circ.just_migrated = false;
 				circ.org_id = org_index;
 				circles.push(circ);
 
@@ -218,6 +267,7 @@ var create_world = function(view_el, res_data, org_data) {
 					id: "test",
 					radius: c.radius
 				  });
+				temp_c.just_migrated = true;
 				temp_c.org_id = org_index;
 				temp_c.color=c.color;
 				temp_c.sim_type = "org";
@@ -234,7 +284,7 @@ var create_world = function(view_el, res_data, org_data) {
 			});
 			world.add(cm);
 			orgs[org_index] = {org: this_org, fit:0, constraints:this_org_constraints, parent_id: -2};
-			world.subscribe('render', redraw_orgs, null, 100);
+			world.subscribe('render', redraw_migrated_orgs, null, 100);
 		};
 
 
@@ -243,17 +293,21 @@ var create_world = function(view_el, res_data, org_data) {
 			var circles = orgs[org.org_id].org;
 			var circle_constraints = orgs[org.org_id].constraints;
 
+
+			var new_color = mutate_color(circles[0].color);
 			var this_org = [];
 			var this_org_constraints = [];
 
 			_.forEach(circles, function(c, c_idx, cs) {
 				var temp_c = Physics.body('circle', c.options);
 				temp_c.org_id = org_index
-				temp_c.color = org.color;
+				temp_c.color = new_color;
 				temp_c.sim_type = c.sim_type;
+				temp_c.just_migrated = false;
 
 				if(Math.random() < mut_rate){
 					temp_c = mutate_circle(temp_c);
+
 				};
 				this_org.push(temp_c);
 				world.add(temp_c);
@@ -347,9 +401,31 @@ var create_world = function(view_el, res_data, org_data) {
 			return true;
 		});
 
+		var redraw_migrated_orgs = function(data) {
+			var migrated_circles = _.filter(_.flatten(_.pluck(orgs, 'org')), 'just_migrated');
+			console.log(migrated_circles);
+
+			//color migrated circles
+			Physics.util.each(migrated_circles, function(circle) {
+				// neon pink - #FF6EC7
+				var geo = circle.geometry
+					,style = {fillStyle: '#FF00FF', strokeStyle: 'white', angleIndicator: 'white'};
+
+				circle.view = data.renderer.createView( geo, style );
+				circle.just_migrated = false;
+			});
+			//set migrated flag = false
+
+			//delay on rendering correctly...
+
+
+			world.unsubscribe( data.topic, data.handler );
+			setTimeout(function() {world.subscribe('render', redraw_orgs, null, 100); }, 1000);
+
+		};
+
 		var redraw_orgs = function(data) {
 			//TODO
-
 			var all_circles = _.flatten(_.pluck(orgs, 'org'));
 
 			Physics.util.each( all_circles, function( circle ){
