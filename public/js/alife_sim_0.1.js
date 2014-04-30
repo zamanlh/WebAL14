@@ -64,7 +64,6 @@ var create_world = function(view_el, res_data, org_data) {
 	var mutate_color = function(hex_color) {
 		rgb_obj = hex_to_rgb(hex_color);
 		var rnd = Math.random();
-		console.log(Math.round(normRand()*10));
 		if (rnd < 1/3.0){
 			//mutate r
 			rgb_obj.r += Math.round(normRand()*10);
@@ -80,7 +79,7 @@ var create_world = function(view_el, res_data, org_data) {
 
 	socket.on('num_connected_response', function(data) {
 		num_connected = data.connections;
-		console.log(num_connected);
+		console.log("num connected = " + num_connected);
 	});
 
 
@@ -403,7 +402,6 @@ var create_world = function(view_el, res_data, org_data) {
 
 		var redraw_migrated_orgs = function(data) {
 			var migrated_circles = _.filter(_.flatten(_.pluck(orgs, 'org')), 'just_migrated');
-			console.log(migrated_circles);
 
 			//color migrated circles
 			Physics.util.each(migrated_circles, function(circle) {
@@ -446,7 +444,6 @@ var create_world = function(view_el, res_data, org_data) {
 			setInterval(function() { socket.emit('num_connected'); }, 5000);
 
 		socket.on('send_org', function(data) {
-			console.log("getting org!");
 			serialized_org = data;
 			add_serialized_org(serialized_org);
 
