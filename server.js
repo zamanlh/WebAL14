@@ -1,9 +1,10 @@
 var express = require('express')
 	, app = express()
 	, server = require('http').createServer(app)
-	, io = require('socket.io').listen(server);
+	, io = require('socket.io').listen(server)
+	, _ = require('lodash');
 
-server.listen(8010);
+server.listen(8080);
 
 app.get('/', function (req, res) {
 	res.sendfile(__dirname + '/index.html');
@@ -11,29 +12,26 @@ app.get('/', function (req, res) {
 
 app.use("/public", express.static(__dirname + "/public"));
 
-
-num_connected = 0;
-
-stored_org = null;
+saved_orgs = {};
 
 io.sockets.on('connection', function (socket) {
-	num_connected += 1;
+	io.sockets.sockets['nickname'] = socket.id;
 
 	socket.on('num_connected', function(data) {
-		socket.emit('num_connected_response', {connections: num_connected});
+		socket.emit('num_connected_response', {connections: io.sockets.clients().length});
 	});
 
 	socket.on('save_org', function(data) {
-		stored_org = data;
+		saved_orgs[io.sockets.sockets.nickname] = data;
 	});
 
 	socket.on('get_org', function(data) {
-		socket.emit('send_org', stored_org);
+		random_connection = _.sample(_.keys(saved_orgs), 1);
+		socket.emit('send_org', saved_orgs[random_connection]);
 	});
 
 	socket.on('disconnect', function () {
-		num_connected -= 1;
+		delete saved_orgs[io.sockets.sockets.nickname];
+		delete io.sockets.sockets.nickname;
 	});
-
-
 });
