@@ -4,7 +4,7 @@ var express = require('express')
 	, io = require('socket.io').listen(server)
 	, _ = require('lodash');
 
-server.listen(8080);
+server.listen(8010);
 
 app.get('/', function (req, res) {
 	res.sendfile(__dirname + '/index.html');

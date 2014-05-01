@@ -79,7 +79,8 @@ var create_world = function(view_el, res_data, org_data) {
 
 	socket.on('num_connected_response', function(data) {
 		num_connected = data.connections;
-		console.log("num connected = " + num_connected);
+		//console.log("num connected = " + num_connected);
+		$('#connection_badge').text(num_connected);
 	});
 
 
